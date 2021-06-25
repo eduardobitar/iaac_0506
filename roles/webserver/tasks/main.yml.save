@@ -1,0 +1,12 @@
+- name: Install nginx
+  apt:
+     name: "nginx"
+     state: latest
+
+- name: Copiando index.html
+  copy:
+    src: index.html
+    dest: '{{ nginx_html }}'
+  notify:
+    - Restart nginx---
+# tasks file for webserver
