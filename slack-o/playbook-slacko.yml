@@ -1,0 +1,125 @@
+- hosts: remoto
+  gather_facts: true
+
+  tasks:
+  - name: Gather the package facts
+    ansible.builtin.package_facts:
+      manager: auto
+    tags:
+         - pythoninst
+         - pipinst
+         - mongodbinst
+         - slackoinst
+
+  - name: Install python3
+    apt:
+      name: python3
+      update_cache: yes
+      state: present
+    when: "'python3' not in ansible_facts.packages"
+    tags:
+         - pythoninst
+    
+  - name: Install python3-pip
+    apt:
+      name: python3-pip
+      update_cache: yes
+      state: present
+    when: "'python3-pip' not in ansible_facts.packages"
+    tags:
+         - pipinst
+
+  - name: Install mongodb
+    apt:
+      name: mongodb
+      update_cache: yes
+      state: present
+    when: "'mongodb' not in ansible_facts.packages"
+    tags:
+         - mongodbinst
+
+  - name: Enable and start mongodb
+    systemd:
+      state: started
+      name: mongodb
+      enabled: yes
+    tags:
+         - mongodbinst
+
+  - name: Check Directory slacko-api exist or not
+    stat:
+      path: "{{ installpath }}"
+    register: status
+    tags:
+         - slackoinst
+
+  - debug: var=status
+    tags:
+         - slackoinst
+
+  - name: Create Directory slacko-api
+    file:
+      path: "{{ installpath }}"
+      state: directory
+    when: status.stat.exists == false
+    tags:
+         - slackoinst
+
+  - name: Copy requeriments.txt
+    copy:
+      src: "{{ vagrantpath }}/requeriments.txt"
+      dest: "{{ installpath }}"
+      mode: 0777
+    tags:
+         - slackoinst
+  
+  - name: Install specified python requirements
+    pip:
+      requirements: "{{ installpath }}/requeriments.txt"
+    tags:
+         - slackoinst
+
+  - name: Copy slacko-api.sh
+    copy:
+      src: "{{ vagrantpath }}/slacko-api.sh"
+      dest: "{{ installpath }}"
+      mode: 0777
+    tags:
+         - slackoinst
+
+  - name: Copy main.py
+    copy:
+      src: "{{ vagrantpath }}/main.py"
+      dest: "{{ installpath }}"
+      mode: 0777
+    tags:
+         - slackoinst
+
+  - name: Copy slacko-api.sh
+    copy:
+      src: "{{ vagrantpath }}/slacko-api.sh"
+      dest: /etc/systemd/system
+      mode: 0777
+    tags:
+         - slackoinst
+
+  - name: Enable and start slacko-api
+    systemd:
+      state: started
+      name: slacko-api
+      enabled: yes
+    tags:
+         - slackoinst
+
+  - name: Check that you can connect (GET) to a page and it returns a status 200
+    uri:
+      url: http://127.0.0.1:8000/healthcheck
+      return_content: yes
+    register: slackostatus
+    tags:
+         - slackoinst
+         
+  - debug: var=slackostatus
+    tags:
+         - slackoinst    
+
